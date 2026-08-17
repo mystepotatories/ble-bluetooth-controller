@@ -1,0 +1,5 @@
+<!-- Add these keys inside the <dict> of ios/Runner/Info.plist -->
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>Bluetooth is used to connect to and control the robot.</string>
+<key>NSBluetoothPeripheralUsageDescription</key>
+<string>Bluetooth is used to connect to and control the robot.</string>
