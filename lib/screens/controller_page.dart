@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../services/ble_identifiers.dart';
 import '../widgets/pressable_control.dart';
+import 'bluetooth_device_picker_page.dart';
 
 enum ControlMode { joystick, buttons }
 
@@ -21,10 +20,8 @@ class ControllerPage extends StatefulWidget {
 }
 
 class _ControllerPageState extends State<ControllerPage> {
-  BluetoothDevice? _device;
-  BluetoothCharacteristic? _command;
-  StreamSubscription<List<ScanResult>>? _scanSubscription;
-  StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
+  BluetoothConnection? _connection;
+  StreamSubscription<Uint8List>? _inputSubscription;
   ControlMode _mode = ControlMode.buttons;
   bool _scanning = false;
   bool _connected = false;
@@ -46,9 +43,9 @@ class _ControllerPageState extends State<ControllerPage> {
   @override
   void dispose() {
     _send('S');
-    _scanSubscription?.cancel();
-    _connectionSubscription?.cancel();
-    _device?.disconnect();
+    _inputSubscription?.cancel();
+    _connection?.finish();
+    FlutterBluetoothSerial.instance.cancelDiscovery();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -57,7 +54,7 @@ class _ControllerPageState extends State<ControllerPage> {
   Future<void> _connect() async {
     if (_connected) {
       await _send('S');
-      await _device?.disconnect();
+      await _connection?.finish();
       return;
     }
 
@@ -79,93 +76,58 @@ class _ControllerPageState extends State<ControllerPage> {
       return;
     }
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        final adapterState = await FlutterBluePlus.adapterState.first;
-        if (adapterState != BluetoothAdapterState.on) {
-          await FlutterBluePlus.turnOn();
-        }
-      } catch (_) {
+    try {
+      final enabled = await FlutterBluetoothSerial.instance.requestEnable();
+      if (enabled != true) {
         _message('Bluetooth must be turned on to find the robot.');
         return;
       }
+    } catch (_) {
+      _message('Bluetooth must be turned on to find the robot.');
+      return;
     }
 
+    if (!mounted) return;
     setState(() => _scanning = true);
-    await _scanSubscription?.cancel();
-    _scanSubscription = FlutterBluePlus.scanResults.listen((results) async {
-      for (final result in results) {
-        final name = result.advertisementData.advName.isNotEmpty
-            ? result.advertisementData.advName
-            : result.device.platformName;
-        if (name == robotName) {
-          await FlutterBluePlus.stopScan();
-          await _scanSubscription?.cancel();
-          await _openDevice(result.device);
-          return;
-        }
-      }
-    });
-
     try {
-      await FlutterBluePlus.startScan(
-        withNames: [robotName],
-        timeout: const Duration(seconds: 10),
+      final device = await Navigator.of(context).push<BluetoothDevice>(
+        MaterialPageRoute(builder: (_) => const BluetoothDevicePickerPage()),
       );
-      await FlutterBluePlus.isScanning.where((value) => !value).first;
-      if (mounted && !_connected) _message('Robot not found. Turn it on and retry.');
+      if (device != null) await _openDevice(device.address);
     } catch (_) {
-      _message('Unable to find the robot. Check Bluetooth and permissions, then try again.');
+      _message('Unable to open the Bluetooth device list.');
     } finally {
       if (mounted) setState(() => _scanning = false);
     }
   }
 
-  Future<void> _openDevice(BluetoothDevice device) async {
+  Future<void> _openDevice(String address) async {
     try {
-      _device = device;
-      await device.connect(
-        timeout: const Duration(seconds: 12),
-        license: License.nonprofit,
+      final connection = await BluetoothConnection.toAddress(address);
+      _connection = connection;
+      await _inputSubscription?.cancel();
+      _inputSubscription = connection.input?.listen(
+        (_) {},
+        onDone: _handleDisconnected,
       );
-      final services = await device.discoverServices();
-      BluetoothCharacteristic? characteristic;
-      for (final service in services) {
-        for (final item in service.characteristics) {
-          if (item.properties.writeWithoutResponse) {
-            characteristic = item;
-            break;
-          }
-          if (characteristic == null && item.properties.write) {
-            characteristic = item;
-          }
-        }
-        if (characteristic?.properties.writeWithoutResponse == true) break;
-      }
-      if (characteristic == null) throw Exception('Command characteristic missing');
-      _command = characteristic;
-      await _connectionSubscription?.cancel();
-      _connectionSubscription = device.connectionState.listen((state) {
-        if (!mounted) return;
-        setState(() => _connected = state == BluetoothConnectionState.connected);
-        if (state == BluetoothConnectionState.disconnected) _command = null;
-      });
       if (mounted) setState(() => _connected = true);
       _message('Robot connected');
     } catch (_) {
-      await device.disconnect();
       _message('Could not connect to the robot. Make sure it is turned on and nearby.');
     }
   }
 
+  void _handleDisconnected() {
+    _connection = null;
+    if (mounted) setState(() => _connected = false);
+  }
+
   Future<void> _send(String value) async {
-    final characteristic = _command;
-    if (characteristic == null) return;
+    final connection = _connection;
+    if (connection == null || !connection.isConnected) return;
     try {
-      await characteristic.write(
-        utf8.encode(value),
-        withoutResponse: characteristic.properties.writeWithoutResponse,
-      );
+      connection.output.add(Uint8List.fromList(utf8.encode('$value\n')));
+      await connection.output.allSent;
     } catch (_) {
       _message('Could not send command');
     }

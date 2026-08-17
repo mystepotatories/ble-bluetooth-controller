@@ -1,1 +1,0 @@
-const robotName = 'FleXon';
