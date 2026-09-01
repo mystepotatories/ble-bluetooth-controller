@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 
     <!-- Android 12+ Bluetooth runtime permissions. -->
     <uses-permission
@@ -14,7 +14,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
 
     <application
-        android:label="FleXon Controller"
+        android:label="FleXon"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
