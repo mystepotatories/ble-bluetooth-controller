@@ -13,7 +13,7 @@ void main() {
   testWidgets('shows the robot controller', (WidgetTester tester) async {
     await tester.pumpWidget(const RobotControllerApp());
 
-    expect(find.text('ROBOT CONTROLLER'), findsOneWidget);
+    expect(find.text('FLEXON CONTROLLER'), findsOneWidget);
     expect(find.text('Connect'), findsOneWidget);
   });
 }

@@ -171,7 +171,7 @@ class _ControllerPageState extends State<ControllerPage> {
                 children: [
                   const Icon(Icons.smart_toy_outlined, color: Color(0xFF69F0AE)),
                   const SizedBox(width: 9),
-                  const Expanded(child: Text('ROBOT CONTROLLER', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+                  const Expanded(child: Text('FLEXON CONTROLLER', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 1.2))),
                   FilledButton.tonalIcon(
                     onPressed: _scanning ? null : _connect,
                     icon: Icon(_connected ? Icons.bluetooth_connected : Icons.bluetooth_searching),
