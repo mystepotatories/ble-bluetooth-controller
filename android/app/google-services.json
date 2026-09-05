@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "583412637207",
+    "project_id": "flexon-d2ddb",
+    "storage_bucket": "flexon-d2ddb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583412637207:android:0be62c87fae2e69d104652",
+        "android_client_info": {
+          "package_name": "com.potatotech.flexon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZFz3laOPJoZTyEWHs-cc_sm4ST94CwnE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
